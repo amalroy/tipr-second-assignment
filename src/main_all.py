@@ -11,7 +11,6 @@ import matplotlib.image as mpimg
 from keras.models import Sequential
 from keras.layers import Dense,Activation
 from PIL import Image
-import pickle
 import numpy as np
 def my_nn(n_vec,act):
     net = NeuralNetwork()
@@ -44,6 +43,7 @@ if __name__ == '__main__':
     parser.add_argument('--dataset')
     scaler = StandardScaler()
     args=parser.parse_args()
+    #config = [int(item) for item in args.configuration.split(',')]
     mode='test'
     if(args.dataset == 'Cat-Dog'):
         n_classes=2
@@ -52,55 +52,38 @@ if __name__ == '__main__':
     if (args.train_data != None):
         mode='train'
     #load test data
-    subfolders = [f.path for f in os.scandir(args.test_data) if f.is_dir()]
-    for i in range(len(subfolders)):
-        imgs=[]
-        for file in glob.glob(subfolders[i]+'/*.jpg'):
-            img=Image.open(file).convert('L')
-            img=img.resize((28,28),Image.ANTIALIAS)
-            imgs.append(np.array(img).flatten())
-        images=np.vstack(imgs)
-        #print(images.shape)
-        labels = np.array([i] * images.shape[0],dtype='int8')
-        if(i==0):
-            X_test=images
-            y_test=labels
-        else:
-            X_test=np.append(X_test,images,axis=0)
-            y_test=np.append(y_test,labels,axis=0)
-    print(X_test.shape)
-    input_dim=X_test.shape[1]
-    X_test=scaler.fit_transform(X_test)
-    fname='model_'+args.dataset+'.sav' 
-    if (mode =='test'):
-        network=pickle.load(open(fname, 'rb'))
-        y_pred=network.predict(X_test,y_test)
-        acc=accuracy_score(y_test,y_pred)
-        f1_mic=f1_score(y_test,y_pred,average='micro')
-        f1_mac=f1_score(y_test,y_pred,average='macro')
-        print("Test Accuracy ::",acc)
-        print("Test Macro F1-score ::",f1_mac)
-        print("Test Micro F1-score ::",f1_mic)
-
+    #subfolders = [f.path for f in os.scandir(args.test_data) if f.is_dir()]
+    #for i in range(len(subfolders)):
+    #    images = np.array([mpimg.imread(file).flatten() for file in glob.glob(subfolders[i]+'/*.jpg')])
+    #    labels = np.array([i] * images.shape[0],dtype='int8')
+    #    if(i==0):
+    #        X_test=images
+    #        y_test=labels
+    #    else:
+    #        X_test=np.append(X_test,images,axis=0)
+    #        y_test=np.append(y_test,labels,axis=0)
+    #input_dim=X_test.shape[1]
+    #X_test=scaler.fit_transform(X_test)
     if (mode =='train'):
-        #max_train=15000
+        max_train=10000
         input_conf=[50,20]
         input_dim=784
-        if(args.configuration != None):
-            config = [int(item) for item in args.configuration.split(',')]
-            input_conf=np.array(config)
-        n_vec=[0] * (len(input_conf)+2)
-        n_vec[0]=input_dim
-        n_vec[1:-1]=input_conf
-        n_vec[-1]=n_classes
-        subfolders = [f.path for f in os.scandir(args.train_data) if f.is_dir()]
+        #if(args.configuration != None):
+        #    input_conf=np.array(config)
+        #n_vec=[0] * (len(input_conf)+2)
+        #n_vec[0]=input_dim
+        #n_vec[1:-1]=input_conf
+        #n_vec[-1]=n_classes
+        subfolders = [f.path for f in os.scandir(args.test_data) if f.is_dir()]
         for i in range(len(subfolders)):
+            #images = np.array([mpimg.imread(file).flatten() for file in glob.glob(subfolders[i]+'/*.jpg')])
             imgs=[]
             for file in glob.glob(subfolders[i]+'/*.jpg'):
                 img=Image.open(file).convert('L')
                 img=img.resize((28,28),Image.ANTIALIAS)
                 imgs.append(np.array(img).flatten())
             images=np.vstack(imgs)
+            #images=np.array(
             print(images.shape)
             labels = np.array([i] * images.shape[0],dtype='int8')
             if(i==0):
@@ -110,31 +93,40 @@ if __name__ == '__main__':
                 X_train=np.append(X_train,images,axis=0)
                 y_train=np.append(y_train,labels,axis=0)
 
+        #X_train=np.array(images)
+        #y_train=np.array(labels)
         print(X_train.shape,y_train.shape)
         X_train, y_train = shuffle(X_train, y_train)
+        print
         X_train=scaler.fit_transform(X_train)
-
         #define the neural net
         #parameters
-        minibatch_size=100
-        learning_rate=1e-2
-        max_epochs=30
-        network=my_nn(n_vec,'sigmoid')
-        network=network.fit(X_train,y_train, n_classes, minibatch_size, 10, max_epochs)
-        save=True
-        if(save==True):
-            pickle.dump(network, open(fname, 'wb'))
-        print("training finished")
-        y_pred=network.predict(X_test,y_test)
-        acc=accuracy_score(y_test,y_pred)
-        f1_mic=f1_score(y_test,y_pred,average='micro')
-        f1_mac=f1_score(y_test,y_pred,average='macro')
-        print("Test Accuracy ::",acc)
-        print("Test Macro F1-score ::",f1_mac)
-    keras=False
+    minibatch_size=100
+    learning_rate=1e-2
+    max_epochs=30
+    n_vec=[input_dim, 200, 50, n_classes]
+    keras=True
     if(keras == True):
+        max_epochs=100
+        n_vec=[input_dim, 200, 50, n_classes]
         onehot=np.eye(n_classes)[y_train].reshape((y_train.shape[0],n_classes))
         k_net=keras_nn(n_vec,'sigmoid')
-        k_net.fit(X_train[:max_train,:], onehot[:max_train], epochs=max_epochs,batch_size=minibatch_size)
-        loss,acc=k_net.evaluate(X_train[max_train:,:],onehot[max_train:])
+        k_net.fit(X_train, onehot, epochs=max_epochs,batch_size=minibatch_size)
+        loss,acc=k_net.evaluate(X_train,onehot)
         print(loss,acc)
+    else:
+        print(n_vec)
+        network=my_nn(n_vec,'sigmoid')
+        network=network.fit(X_train,y_train, n_classes, minibatch_size, 10, max_epochs)
+        print("training finished")
+        y_pred=network.predict(X_train,y_train)
+        acc=accuracy_score(y_train,y_pred)
+        f1_mic=f1_score(y_train,y_pred,average='micro')
+        f1_mac=f1_score(y_train,y_pred,average='macro')
+        print("Test Accuracy ::",acc)
+        print("Test Macro F1-score ::",f1_mac)
+        print("Test Micro F1-score ::",f1_mic)
+    #y_pred=network.predict(X_test[max_train:,:],y_test[max_train:])
+    #print("Test Accuracy ::",accuracy_score(y_test[max_train:],y_pred))
+    #print("Test Macro F1-score ::",f1_score(y_test[max_train:],y_pred,average='macro'))
+    #print("Test Micro F1-score ::",f1_score(y_test[max_train:],y_pred,average='micro'))
